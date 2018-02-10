@@ -89,7 +89,11 @@ portstart
 	STR R0, [R1]
 	
 	LDR R1, =GPIO_PORTF_DIR_R
-	MOV R0, #6						;SET BITS HIGH FOR PORTS 2,1 TO ENABLE OUTPUT
+	MOV R0, #0						;SET BITS HIGH FOR PORTS 2,1 TO ENABLE OUTPUT
+	STR R0, [R1]
+	
+	LDR R1, =GPIO_PORTF_DIR_R
+	MOV R0, #0x01
 	STR R0, [R1]
 	
 	LDR R1, =GPIO_PORTF_AFSEL_R
@@ -118,4 +122,3 @@ portstart
 //testttttt
 	ALIGN      ; make sure the end of this section is aligned
 	END        ; end of file
-
