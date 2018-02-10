@@ -113,9 +113,8 @@ portstart
 	STR R0, [R1]					;ENABLE DIGITAL
 	
 	BX	LR
+/tttt
 
-
-//testttttt
 	ALIGN      ; make sure the end of this section is aligned
 	END        ; end of file
 
