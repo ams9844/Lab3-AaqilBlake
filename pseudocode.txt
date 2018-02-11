@@ -1,0 +1,16 @@
+Pseudocode for Lab3
+Initialize GPIO Registers
+set duty cycle to 20% in register
+	Branch to subroutine
+
+Subroutine
+	Delay for 1/80 of a second
+	Determine if should continue to delay
+	If SW1 is pressed branch to breathe
+	BL subroutine
+
+Breathe
+	Delay for 1/230 of a second
+	increase and decrease duty cycle
+	Determine if switch is no longer pressed and branch back to subroutine
+	BL Breathe

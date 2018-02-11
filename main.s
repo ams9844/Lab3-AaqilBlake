@@ -59,9 +59,31 @@ Start
 	CPSIE  I    ; TExaS voltmeter, scope runs on interrupts
 loop  
 ; main engine goes here
+	
+	BL blink
+	MOV R3, #80 ;tell delay to delay for 1/16 sec
+	BL delay
 
 	B    loop
-
+	
+delay ;put in R3 time delay 80=~1/16
+	MOV R0, #15000 ;SET DELAY TO 1/800 OF A SECOND
+wait	SUBS R0, R0, #1
+	BNE wait ;if not equal branch to delay
+	SUBS R3, R3, #1
+	BNE delay
+	BX LR
+	
+	
+blink
+	LDR R1, =GPIO_PORTE_DATA_R
+	LDR R0, [R1]				;GET DATA FROM PORT
+	MOV R2, #0x01
+	EOR R0, R0, #-1				; NOT THE DATA
+	AND R0, R0, R2				;SELECT ONLY PE0
+	STR R0, [R1]				;WRITE THE VALUE
+	BX LR
+	
 portstart
 	LDR R1, =SYSCTL_RCGCGPIO_R
 	LDR R0, [R1]
@@ -80,26 +102,18 @@ portstart
 	MOV R0, #0xFF
 	STR R0, [R1]
 	
-	LDR R1, =GPIO_PORTF_AMSEL_R
-	MOV R0, #0
-	STR R0, [R1]					;DISABLE ANALOG
-	
-	LDR R1, =GPIO_PORTF_PCTL_R      ;ALL PORT F TO NORMAL GPIO
-	MOV R0, #0
-	STR R0, [R1]
-	
 	LDR R1, =GPIO_PORTF_DIR_R
-	MOV R0, #0						;SET BITS HIGH FOR PORTS 2,1 TO ENABLE OUTPUT
+	MOV R0, #0						;disable output
 	STR R0, [R1]
-	
-	LDR R1, =GPIO_PORTF_DIR_R
-	MOV R0, #0x01
+
+	LDR R1, =GPIO_PORTE_DIR_R
+	MOV R0, #0x01					;enable output on PE0
 	STR R0, [R1]
-	
+
 	LDR R1, =GPIO_PORTF_AFSEL_R
 	MOV R0, #0
 	STR R0, [R1]					;DISABLE ALT FUNCTIONS
-	
+
 	LDR R1, =GPIO_PORTE_AFSEL_R
 	MOV R0, #0
 	STR R0, [R1]					;DISABLE ALT FUNCTIONS
@@ -118,7 +132,5 @@ portstart
 	
 	BX	LR
 
-
-//testttttt
 	ALIGN      ; make sure the end of this section is aligned
 	END        ; end of file
