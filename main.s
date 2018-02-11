@@ -56,10 +56,11 @@ Start
 	BL  TExaS_Init ; voltmeter, scope on PD3
  ; Initialization goes here
 	BL portstart
+	MOV R5, #2
 	CPSIE  I    ; TExaS voltmeter, scope runs on interrupts
 loop  
 ; main engine goes here
-	MOV R5, #5 
+	BL switches
 	BL duty ;returns R3 and R4, with on and off time respectively, needs R5 in the form of 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 * [10%] duty cycle
 	BL blink
 	BL delay
@@ -68,7 +69,29 @@ loop
 	BL delay
 
 	B    loop
-	
+
+CHECK	DCD 0 ; makes a memory location to store if the button was pressed in the last cycle
+switches
+	LDR R1, =GPIO_PORTE_DATA_R
+	LDR R0, [R1]				;GET DATA FROM PORT E
+	MOV R2, #0x02				;MASK FOR PORT PE1
+	AND R0, R2, R0				;ERASE OTHER BITS
+	LDR R1, =CHECK
+	LDRB R2, [R1]
+	STRB R0, [R1]
+	SUB R2, R2, R0				;CHECKS IF IT IS 10 - 00 =10 (WOULD MEAN THE BUTTON WAS PRESSED LAST CYCLE AND RELEASED THIS CYCLE)
+	BNE SEC
+	BX LR
+SEC	BPL INCREASE_DUTY_CYCLE
+	BX LR
+INCREASE_DUTY_CYCLE	ADD R5, R5, #1 ;INCREASE DUTY CYCLE BY ONE (=10%)
+	MOV R2, #10
+	SUBS R2, R2, R5	;10-(R5) IF IS GREATER THAN 10 INVALID
+	BMI ZERO ;IF R5 WAS GREATER THAN 10, RESET TO 0
+	BX LR
+ZERO	AND R5, R5, #0
+	BX LR
+
 delay ;put in R3 time delay 80=~1/16
 	MOV R0, #15000 ;SET DELAY TO 1/800 OF A SECOND
 wait	SUBS R0, R0, #1
