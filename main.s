@@ -59,9 +59,12 @@ Start
 	CPSIE  I    ; TExaS voltmeter, scope runs on interrupts
 loop  
 ; main engine goes here
-	
+	MOV R5, #5 
+	BL duty ;returns R3 and R4, with on and off time respectively, needs R5 in the form of 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 * [10%] duty cycle
 	BL blink
-	MOV R3, #80 ;tell delay to delay for 1/16 sec
+	BL delay
+	BL blink
+	MOV R3, R4
 	BL delay
 
 	B    loop
@@ -73,7 +76,13 @@ wait	SUBS R0, R0, #1
 	SUBS R3, R3, #1
 	BNE delay
 	BX LR
-	
+
+duty
+	MOV R0, #16
+	MUL	R3, R0, R5 ; get time on
+	MOV R0, #160
+	SUBS R4, R0, R3; 160-time on = time off
+	BX LR
 	
 blink
 	LDR R1, =GPIO_PORTE_DATA_R
