@@ -47,7 +47,7 @@ SYSCTL_RCGCGPIO_R  EQU 0x400FE608
 	THUMB
 	AREA    DATA, ALIGN=2
 ;global variables go here
-
+CHECK	DCD 0 ; makes a memory location to store if the button was pressed in the last cycle
 	AREA    |.text|, CODE, READONLY, ALIGN=2
 	THUMB
 	EXPORT  Start
@@ -70,7 +70,6 @@ loop
 
 	B    loop
 
-CHECK	DCD 0 ; makes a memory location to store if the button was pressed in the last cycle
 switches
 	LDR R1, =GPIO_PORTE_DATA_R
 	LDR R0, [R1]				;GET DATA FROM PORT E
@@ -85,8 +84,8 @@ switches
 SEC	BPL INCREASE_DUTY_CYCLE
 	BX LR
 INCREASE_DUTY_CYCLE	ADD R5, R5, #2 ;INCREASE DUTY CYCLE BY tw0 (=20%)
-	MOV R2, #10
-	SUBS R2, R2, R5	;10-(R5) IF IS GREATER THAN 10 INVALID
+	MOV R2, #0x0A
+	CMP R2, R5	;10-(R5) IF IS GREATER THAN 10 INVALID
 	BMI ZERO ;IF R5 WAS GREATER THAN 10, RESET TO 0
 	BX LR
 ZERO	AND R5, R5, #0
