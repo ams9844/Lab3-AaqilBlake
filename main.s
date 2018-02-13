@@ -60,8 +60,10 @@ Start
 	CPSIE  I    ; TExaS voltmeter, scope runs on interrupts
 loop  
 ; main engine goes here
-	BL switches
+SW	BL switches
 	BL duty ;returns R3 and R4, with on and off time respectively, needs R5 in the form of 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 * [10%] duty cycle
+	CMP R5, #0 ;CHECK IF ZERO, BYPASS BLINKS AND DELAYS
+	BEQ SW
 	BL blink
 	BL delay
 	BL blink
@@ -86,7 +88,7 @@ SEC	BPL INCREASE_DUTY_CYCLE
 INCREASE_DUTY_CYCLE	ADD R5, R5, #2 ;INCREASE DUTY CYCLE BY tw0 (=20%)
 	MOV R2, #0x0A
 	CMP R2, R5	;10-(R5) IF IS GREATER THAN 10 INVALID
-	BMI ZERO ;IF R5 WAS GREATER THAN 10, RESET TO 0
+	BEQ ZERO ;IF R5 IS 10, RESET TO 0
 	BX LR
 ZERO	AND R5, R5, #0
 	BX LR
