@@ -47,7 +47,8 @@ SYSCTL_RCGCGPIO_R  EQU 0x400FE608
 	THUMB
 	AREA    DATA, ALIGN=2
 ;global variables go here
-
+CHECK	DCD 0 ; makes a memory location to store if the button was pressed in the last cycle
+DEC	DCD 0; VARIABLE TO ENSURE THAT THE BREATHING WORKS
 	AREA    |.text|, CODE, READONLY, ALIGN=2
 	THUMB
 	EXPORT  Start
@@ -56,11 +57,14 @@ Start
 	BL  TExaS_Init ; voltmeter, scope on PD3
  ; Initialization goes here
 	BL portstart
+	MOV R5, #2
 	CPSIE  I    ; TExaS voltmeter, scope runs on interrupts
 loop  
 ; main engine goes here
-	MOV R5, #5 
+SW	BL switches
 	BL duty ;returns R3 and R4, with on and off time respectively, needs R5 in the form of 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 * [10%] duty cycle
+	CMP R5, #0 ;CHECK IF ZERO, BYPASS BLINKS AND DELAYS
+	BEQ SW
 	BL blink
 	BL delay
 	BL blink
@@ -68,22 +72,80 @@ loop
 	BL delay
 
 	B    loop
-	
-delay ;put in R3 time delay 80=~1/16
-	MOV R0, #15000 ;SET DELAY TO 1/800 OF A SECOND
-wait	SUBS R0, R0, #1
-	BNE wait ;if not equal branch to delay
-	SUBS R3, R3, #1
-	BNE delay
+
+switches
+	LDR R1, =GPIO_PORTF_DATA_R	;GET DATA FROM PORT F
+	LDR R0, [R1]
+	MOV R2, #0x10
+	AND R0, R2, R0
+	CMP R0, #0
+	BEQ BREATHE
+	LDR R1, =GPIO_PORTE_DATA_R
+	LDR R0, [R1]				;GET DATA FROM PORT E
+	MOV R2, #0x02				;MASK FOR PORT PE 1
+	AND R0, R2, R0				;ERASE OTHER BITS
+	LDR R1, =CHECK
+	LDR R2, [R1]
+	STR R0, [R1]
+	CMP R2, R0				;CHECKS IF IT IS 10 - 00 =10 (WOULD MEAN THE BUTTON WAS PRESSED LAST CYCLE AND RELEASED THIS CYCLE)
+	BNE SEC
+	BX LR
+SEC	BPL INCREASE_DUTY_CYCLE
+	BX LR
+INCREASE_DUTY_CYCLE	MOV R2, #0x0A
+	CMP R2, R5	;10-(R5) IF IS GREATER THAN 10 INVALID
+	BEQ ZERO ;IF R5 IS 10, RESET TO 0
+	BMI ZERO
+	ADD R5, R5, #2 ;INCREASE DUTY CYCLE BY tw0 (=20%)
+	BX LR
+ZERO	AND R5, R5, #0
 	BX LR
 
+delay ;put in R3 time delay 80=~1/16
+	CMP R3, #0
+	BEQ SKO
+	MOV R0, #10370 ;SET DELAY TO 1/800 OF A SECOND
+wait	SUBS R0, R0, #1
+	BNE wait ;if not equal branch to delay
+	SUB R3, R3, #1
+	CMP R3, #0
+	BNE delay
+SKO	BX LR
+	
+BREATHE
+	ADD R7, R7, #1		;have running tally
+	LDR R1, =DEC		;DEC is a memory location which stores a value to know if the duty cycle should be decreasign or increasing
+	LDR R0, [R1]
+	CMP R0, #0
+	BEQ INCREASE		; if DEC is zero, go to the increase section
+	B DECREASE			; if DEC is not zero, go to the decrease section
+INCREASE	MOV R6, #5	;this value is used to divide the running tally 
+	UDIV R5, R7, R6     ;it is stored to R5, which is the duty cycle variable
+	CMP R5, #11	;if it is at 10 or more, go to decrease.
+	BPL	DECREASE
+	BX LR
+DECREASE	MOV R0, #10	;write to DEC to tell the subroutine later that it is decreasing
+	STR R0, [R1]
+	SUB R7, R7, #2		;subtract 2 from the tally, to counteract the increment earlier, and subtract one from tally.
+	UDIV R5, R7, R6		;divide the running tally again
+	CMP R5, #2			;check if R5 is 1 or less, and reset the DEC memory space.
+	BMI RESET
+	BX LR
+RESET	MOV R0, #0
+	STR R0, [R1]
+	BX LR
+	
 duty
 	MOV R0, #16
 	MUL	R3, R0, R5 ; get time on
 	MOV R0, #160
-	SUBS R4, R0, R3; 160-time on = time off
+	SUB R4, R0, R3; 160-time on = time off
+	CMP R4, #0
+	BMI CAP
 	BX LR
-	
+CAP	AND R4, R4, #0  ;When it is set to 10, the result will be negative. Need to make sure it doesnt do that
+	MOV R4, #160
+	BX LR
 blink
 	LDR R1, =GPIO_PORTE_DATA_R
 	LDR R0, [R1]				;GET DATA FROM PORT
@@ -128,7 +190,7 @@ portstart
 	STR R0, [R1]					;DISABLE ALT FUNCTIONS
 	
 	LDR R1, =GPIO_PORTF_PUR_R
-	MOV R0, #0x11
+	MOV R0, #0x10
 	STR R0, [R1]					; EN PF0 AND PF4 PULL UP RESISTORS
 	
 	LDR R1, =GPIO_PORTF_DEN_R		;ENABLE DIGITAL
