@@ -48,6 +48,7 @@ SYSCTL_RCGCGPIO_R  EQU 0x400FE608
 	AREA    DATA, ALIGN=2
 ;global variables go here
 CHECK	DCD 0 ; makes a memory location to store if the button was pressed in the last cycle
+DEC	DCD 0; VARIABLE TO ENSURE THAT THE BREATHING WORKS
 	AREA    |.text|, CODE, READONLY, ALIGN=2
 	THUMB
 	EXPORT  Start
@@ -73,6 +74,12 @@ SW	BL switches
 	B    loop
 
 switches
+	LDR R1, =GPIO_PORTF_DATA_R	;GET DATA FROM PORT F
+	LDR R0, [R1]
+	MOV R2, #0x10
+	AND R0, R2, R0
+	CMP R0, #0
+	BEQ BREATHE
 	LDR R1, =GPIO_PORTE_DATA_R
 	LDR R0, [R1]				;GET DATA FROM PORT E
 	MOV R2, #0x02				;MASK FOR PORT PE 1
@@ -100,7 +107,30 @@ wait	SUBS R0, R0, #1
 	SUBS R3, R3, #1
 	BNE delay
 	BX LR
-
+	
+BREATHE
+	ADD R7, R7, #1
+	LDR R1, =DEC
+	LDR R0, [R1]
+	CMP R0, #0
+	BEQ INCREASE
+	B DECREASE
+INCREASE	MOV R6, #40
+	UDIV R5, R7, R6
+	CMP R5, #10
+	BPL	DECREASE
+	BX LR
+DECREASE	MOV R0, #10
+	STR R0, [R1]
+	SUB R7, R7, #2
+	UDIV R5, R7, R6
+	CMP R5, #2
+	BMI RESET
+	BX LR
+RESET	MOV R0, #0
+	STR R0, [R1]
+	BX LR
+	
 duty
 	MOV R0, #16
 	MUL	R3, R0, R5 ; get time on
